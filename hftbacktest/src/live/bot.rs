@@ -546,11 +546,11 @@ where
     #[inline]
     fn modify(
         &mut self,
-        asset_no: usize,
-        order_id: OrderId,
-        price: f64,
-        qty: f64,
-        wait: bool,
+        _asset_no: usize, // asset_no is never used
+        _order_id: OrderId, // order_id is never used
+        _price: f64, // price is never used
+        _qty: f64, // qty is never used
+        _wait: bool, // wait is never used
     ) -> Result<ElapseResult, Self::Error> {
         todo!();
     }

@@ -1,6 +1,7 @@
 use std::{
     fs::File,
-    io::{Cursor, Error, ErrorKind, Read, Write},
+    // Cursor is never used
+    io::{Error, ErrorKind, Read, Write},
 };
 
 use crate::{

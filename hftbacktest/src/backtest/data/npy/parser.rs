@@ -24,15 +24,16 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn get_string(&self) -> std::io::Result<&str> {
-        match self {
-            Value::String(s) => Ok(s),
-            _ => Err(Error::new(
-                ErrorKind::InvalidData,
-                "must be a string".to_string(),
-            )),
-        }
-    }
+    // `get_string` is never used
+    // pub fn get_string(&self) -> std::io::Result<&str> {
+    //     match self {
+    //         Value::String(s) => Ok(s),
+    //         _ => Err(Error::new(
+    //             ErrorKind::InvalidData,
+    //             "must be a string".to_string(),
+    //         )),
+    //     }
+    // }
 
     pub fn get_integer(&self) -> std::io::Result<usize> {
         match self {

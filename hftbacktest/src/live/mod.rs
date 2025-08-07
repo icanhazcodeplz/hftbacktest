@@ -49,6 +49,7 @@ impl<MD> Instrument<MD> {
             lot_size,
             depth,
             last_trades: Vec::with_capacity(last_trades_capacity),
+            // last_trades: Vec::with_capacity(0),
             orders: Default::default(),
             last_feed_latency: None,
             last_order_latency: None,
