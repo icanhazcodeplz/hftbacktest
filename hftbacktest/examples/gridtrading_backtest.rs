@@ -8,7 +8,7 @@ use hftbacktest::{
         data::{DataSource, read_npz_file},
         models::{
             CommonFees,
-            IntpOrderLatency,
+            ConstantLatency,
             PowerProbQueueFunc3,
             ProbQueueModel,
             TradingValueFeeModel,
@@ -21,17 +21,19 @@ use hftbacktest::{
 mod algo;
 
 fn prepare_backtest() -> Backtest<HashMapMarketDepth> {
-    let latency_data = (20240501..20240532)
-        .map(|date| DataSource::File(format!("latency_{date}.npz")))
-        .collect();
+    // let latency_data = (20240501..20240532)
+    //     .map(|date| DataSource::File(format!("latency_{date}.npz")))
+    //     .collect();
 
-    let latency_model = IntpOrderLatency::new(latency_data, 0);
+    let latency_model = ConstantLatency::new(10_000_000,10_000_000);
     let asset_type = LinearAsset::new(1.0);
     let queue_model = ProbQueueModel::new(PowerProbQueueFunc3::new(3.0));
+    // 
+    // let data = (20240501..20240532)
+    //     .map(|date| DataSource::File(format!("btcusdt_{date}.npz")))
+    //     .collect();
 
-    let data = (20240501..20240532)
-        .map(|date| DataSource::File(format!("1000SHIBUSDT_{date}.npz")))
-        .collect();
+    let data = Vec::from([DataSource::File(format!("btcusdt_20240809-20000.npz"))]);
 
     let hbt = Backtest::builder()
         .add_asset(
@@ -41,11 +43,12 @@ fn prepare_backtest() -> Backtest<HashMapMarketDepth> {
                 .asset_type(asset_type)
                 .fee_model(TradingValueFeeModel::new(CommonFees::new(-0.00005, 0.0007)))
                 .exchange(ExchangeKind::NoPartialFillExchange)
+                .last_trades_capacity(1000)
                 .queue_model(queue_model)
                 .depth(|| {
-                    let mut depth = HashMapMarketDepth::new(0.000001, 1.0);
+                    let mut depth = HashMapMarketDepth::new(0.01, 0.001);
                     depth.apply_snapshot(
-                        &read_npz_file("1000SHIBUSDT_20240501_SOD.npz", "data").unwrap(),
+                        &read_npz_file("btcusdt_20240808_eod.npz", "data").unwrap(),
                     );
                     depth
                 })
@@ -60,12 +63,12 @@ fn prepare_backtest() -> Backtest<HashMapMarketDepth> {
 fn main() {
     tracing_subscriber::fmt::init();
 
-    let relative_half_spread = 0.0005;
-    let relative_grid_interval = 0.0005;
-    let grid_num = 10;
-    let min_grid_step = 0.000001; // tick size
+    let relative_half_spread = 0.05;
+    let relative_grid_interval = 0.05;
+    let grid_num = 2;
+    let min_grid_step = 0.01; // tick size
     let skew = relative_half_spread / grid_num as f64;
-    let order_qty = 1.0;
+    let order_qty = 0.1;
     let max_position = grid_num as f64 * order_qty;
 
     let mut hbt = prepare_backtest();

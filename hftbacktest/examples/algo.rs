@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::{HashMap, VecDeque}, fmt::Debug};
 
 use hftbacktest::prelude::*;
 
@@ -23,13 +23,41 @@ where
     let tick_size = hbt.depth(0).tick_size() as f64;
     // min_grid_step should be in multiples of tick_size.
     let min_grid_step = (min_grid_step / tick_size).round() * tick_size;
-    let mut int = 0;
+    let mut last_trade_local_ts = 0;
+    let mut last_trade_prices = VecDeque::with_capacity(10);
     // Running interval in nanoseconds
-    while ElapseResult::Ok == hbt.elapse(100_000_000).unwrap() {
-        int += 1;
-        if int % 10 == 0 {
-            // Records every 1-sec.
-            recorder.record(hbt).unwrap();
+    // while ElapseResult::Ok == hbt.elapse(100_000).unwrap() {
+    // while ElapseResult::Ok == hbt.wait_next_feed(true,100_000).unwrap() {
+
+    loop {
+        let next_feed_resp = hbt.wait_next_feed(true,1_000_000).unwrap();
+        if next_feed_resp == ElapseResult::Ok {
+            continue;
+        }
+        if next_feed_resp == ElapseResult::EndOfData {
+            break;
+        }
+        if next_feed_resp == ElapseResult::MarketFeed {
+            let last_trades = hbt.last_trades(0);
+            if last_trades.len() > 0 {
+                // let last_trade = last_trades[last_trades.len() - 1];
+
+                let last_trade_event = last_trades[last_trades.len() - 1].clone();
+                let most_recent_trade_local_ts = last_trade_event.local_ts;
+                if most_recent_trade_local_ts != last_trade_local_ts {
+                    let most_recent_trade_px = last_trade_event.px;
+                    let most_recent_trade_qty = last_trade_event.qty;
+                    // println!("Last trade: {} {} {}", most_recent_trade_local_ts, most_recent_trade_px, most_recent_trade_qty);
+                    if last_trade_prices.len() >= 10 {
+                        last_trade_prices.pop_front();
+                    }
+                    last_trade_prices.push_back(most_recent_trade_px);
+                    last_trade_local_ts = most_recent_trade_local_ts;
+                    recorder.record(hbt).unwrap();
+
+                    println!("trade_prices: {:?}", last_trade_prices);
+                }
+            }
         }
 
         let depth = hbt.depth(0);
@@ -41,7 +69,8 @@ where
         }
 
         let mid_price = (depth.best_bid() + depth.best_ask()) as f64 / 2.0;
-
+        let bid = depth.best_bid();
+        let ask = depth.best_ask();
         let normalized_position = position / order_qty;
 
         let relative_bid_depth = relative_half_spread + skew * normalized_position;
@@ -77,8 +106,7 @@ where
 
                     // order price in tick is used as order id.
                     new_bid_orders.insert(bid_price_tick, bid_price);
-
-                    bid_price -= grid_interval;
+                    // bid_price -= grid_interval;
                 }
             }
             // Cancels if an order is not in the new grid.
@@ -104,7 +132,7 @@ where
                 hbt.submit_buy_order(
                     0,
                     order_id,
-                    order_price,
+                    bid,
                     order_qty,
                     TimeInForce::GTX,
                     OrdType::Limit,
@@ -150,7 +178,7 @@ where
                 hbt.submit_sell_order(
                     0,
                     order_id,
-                    order_price,
+                    ask,
                     order_qty,
                     TimeInForce::GTX,
                     OrdType::Limit,
