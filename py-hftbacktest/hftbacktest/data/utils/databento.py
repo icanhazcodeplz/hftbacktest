@@ -69,7 +69,7 @@ def convert(
     tmp = np.empty(len(df), event_dtype)
 
     snapshot_ts = False
-
+    previous_local_ts = 0
     for rn, (ts_event, action, side, price, size, order_id, flags, ts_recv) in enumerate(df.iter_rows()):
         exch_ts = int(ts_event.timestamp() * 1_000_000_000)
         local_ts = int(ts_recv.timestamp() * 1_000_000_000)
@@ -106,7 +106,13 @@ def convert(
         if snapshot_ts is not None:
             exch_ts = local_ts = snapshot_ts
 
+        if local_ts <= previous_local_ts:
+            diff_needed = previous_local_ts-local_ts + 1
+            exch_ts += diff_needed
+            local_ts += diff_needed
+            
         tmp[rn] = (ev, exch_ts, local_ts, price, size, order_id, flags, 0)
+        previous_local_ts = local_ts
 
     print('Correcting the latency')
     tmp = correct_local_timestamp(tmp, base_latency)
