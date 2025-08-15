@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     io::Error as IoError,
-    // marker::PhantomData, //unused import
     ops::{Deref, DerefMut},
 };
 
