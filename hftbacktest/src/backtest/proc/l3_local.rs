@@ -243,7 +243,15 @@ where
             self.depth
                 .modify_order(ev.order_id, ev.px, ev.qty, ev.local_ts)?;
         } else if ev.is(LOCAL_CANCEL_ORDER_EVENT) {
-            self.depth.delete_order(ev.order_id, ev.local_ts)?;
+            // If cancelling part of order, modify the order. Otherwise, delete the order.
+            let event_qty = ev.qty;
+            let existing_qty = self.depth.orders().get(&ev.order_id).unwrap().qty;
+            if existing_qty == event_qty {
+                self.depth.delete_order(ev.order_id, ev.local_ts)?;
+            } else {
+                self.depth
+                    .modify_order(ev.order_id, ev.px, existing_qty - event_qty, ev.local_ts)?;
+            }
         }
         // Processes a trade event
         else if ev.is(LOCAL_TRADE_EVENT) && self.trades.capacity() > 0 {

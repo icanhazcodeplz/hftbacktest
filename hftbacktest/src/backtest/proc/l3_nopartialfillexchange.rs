@@ -384,10 +384,31 @@ where
                 self.fill_bid_orders_by_crossing(prev_best_tick, best_tick, event.exch_ts)?;
             }
         } else if event.is(EXCH_CANCEL_ORDER_EVENT) {
+            // If canceling part of the order, modify. Otherwise, delete.
             let order_id = event.order_id;
-            self.depth.delete_order(order_id, event.exch_ts)?;
-            self.queue_model
-                .cancel_market_feed_order(event.order_id, &self.depth)?;
+            let existing_qty = self.depth.orders().get(&order_id).unwrap().qty;
+            let event_qty = event.qty;
+            if existing_qty == event_qty {
+                self.depth.delete_order(order_id, event.exch_ts)?;
+                self.queue_model
+                    .cancel_market_feed_order(event.order_id, &self.depth)?;
+            } else {
+                // TODO: This is copy-pasted from the `EXCH_MODIFY_ORDER_EVENT` case.
+                let new_qty = existing_qty - event_qty;
+                let (side, prev_best_tick, best_tick) =
+                    self.depth.modify_order(event.order_id, event.px, new_qty, event.exch_ts)?;
+                self.queue_model
+                    .modify_market_feed_order(event.order_id, event, &self.depth)?;
+                if side == Side::Buy {
+                    if best_tick > prev_best_tick {
+                        self.fill_ask_orders_by_crossing(prev_best_tick, best_tick, event.exch_ts)?;
+                    }
+                } else if best_tick < prev_best_tick {
+                    self.fill_bid_orders_by_crossing(prev_best_tick, best_tick, event.exch_ts)?;
+                }
+
+            }
+
         } else if event.is(EXCH_FILL_EVENT) {
             // todo: handle properly if no side is provided.
             if event.is(BUY_EVENT) || event.is(SELL_EVENT) {
