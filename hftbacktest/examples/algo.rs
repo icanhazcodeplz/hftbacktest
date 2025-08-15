@@ -29,8 +29,23 @@ where
     // while ElapseResult::Ok == hbt.elapse(100_000).unwrap() {
     // while ElapseResult::Ok == hbt.wait_next_feed(true,100_000).unwrap() {
 
+    let mut i = 0;
     loop {
-        let next_feed_resp = hbt.wait_next_feed(true,1_000_000).unwrap();
+        i += 1;
+        // if i % 1 == 0 {
+        //     println!("i: {}", i);
+        // }
+        // max i = 60960000 ish
+        // if i == 6_000_000 {
+
+        let next_feed_resp = hbt.wait_next_feed(true,5_000_000_000).unwrap();
+        // let next_feed_resp = match hbt.wait_next_feed(true,1_000_000) {
+        //     Ok(value) => {value}
+        //     Err(e) => {
+        //         // println!("Error: {}", e);
+        //         break;
+        //     }
+        // };
         if next_feed_resp == ElapseResult::Ok {
             continue;
         }
@@ -46,7 +61,7 @@ where
                 let most_recent_trade_local_ts = last_trade_event.local_ts;
                 if most_recent_trade_local_ts != last_trade_local_ts {
                     let most_recent_trade_px = last_trade_event.px;
-                    let most_recent_trade_qty = last_trade_event.qty;
+                    // let most_recent_trade_qty = last_trade_event.qty;
                     // println!("Last trade: {} {} {}", most_recent_trade_local_ts, most_recent_trade_px, most_recent_trade_qty);
                     if last_trade_prices.len() >= 10 {
                         last_trade_prices.pop_front();
@@ -55,7 +70,7 @@ where
                     last_trade_local_ts = most_recent_trade_local_ts;
                     recorder.record(hbt).unwrap();
 
-                    println!("trade_prices: {:?}", last_trade_prices);
+                    // println!("trade_prices: {:?}", last_trade_prices);
                 }
             }
         }
@@ -106,10 +121,14 @@ where
 
                     // order price in tick is used as order id.
                     new_bid_orders.insert(bid_price_tick, bid_price);
-                    // bid_price -= grid_interval;
+                    bid_price -= grid_interval;
                 }
             }
             // Cancels if an order is not in the new grid.
+            let existing_orders: Vec<_> = orders.values().collect();
+            if existing_orders.len() > 0 {
+                // println!("hi")
+            }
             let cancel_order_ids: Vec<u64> = orders
                 .values()
                 .filter(|order| {
